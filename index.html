@@ -12,6 +12,10 @@
 <body>
   <div class="bg-gradient"></div>
   <div class="bg-grid"></div>
+  <div class="cursor-glow" aria-hidden="true"></div>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+  <div class="orb orb-3" aria-hidden="true"></div>
 
   <nav class="nav">
     <div class="nav-inner">
@@ -177,8 +181,8 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
-    const links = document.querySelectorAll('.nav-links a');
-    links.forEach(a => a.addEventListener('click', e => {
+    // Smooth scroll nav
+    document.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', e => {
       const id = a.getAttribute('href');
       if (id && id.startsWith('#')) {
         e.preventDefault();
@@ -186,12 +190,65 @@
       }
     }));
 
+    // Reveal on scroll
     const io = new IntersectionObserver(entries => {
-      entries.forEach(en => {
-        if (en.isIntersecting) en.target.classList.add('in');
-      });
+      entries.forEach(en => { if (en.isIntersecting) en.target.classList.add('in'); });
     }, { threshold: 0.15 });
     document.querySelectorAll('.section, .hero').forEach(el => io.observe(el));
+
+    // --- Mouse-reactive background ---
+    const root = document.documentElement;
+    let targetX = 0.5, targetY = 0.5;
+    let currentX = 0.5, currentY = 0.5;
+    let rafId = null;
+
+    function animate() {
+      currentX += (targetX - currentX) * 0.08;
+      currentY += (targetY - currentY) * 0.08;
+      root.style.setProperty('--mx', currentX.toFixed(4));
+      root.style.setProperty('--my', currentY.toFixed(4));
+      root.style.setProperty('--mxp', (currentX * 100).toFixed(2) + '%');
+      root.style.setProperty('--myp', (currentY * 100).toFixed(2) + '%');
+      root.style.setProperty('--tx', ((currentX - 0.5) * 2).toFixed(4));
+      root.style.setProperty('--ty', ((currentY - 0.5) * 2).toFixed(4));
+      if (Math.abs(targetX - currentX) > 0.0005 || Math.abs(targetY - currentY) > 0.0005) {
+        rafId = requestAnimationFrame(animate);
+      } else { rafId = null; }
+    }
+
+    window.addEventListener('pointermove', e => {
+      targetX = e.clientX / window.innerWidth;
+      targetY = e.clientY / window.innerHeight;
+      if (!rafId) rafId = requestAnimationFrame(animate);
+    });
+
+    // Touch fallback: gentle drift
+    if (matchMedia('(hover: none)').matches) {
+      let t = 0;
+      setInterval(() => {
+        t += 0.01;
+        targetX = 0.5 + Math.sin(t) * 0.25;
+        targetY = 0.5 + Math.cos(t * 0.7) * 0.25;
+        if (!rafId) rafId = requestAnimationFrame(animate);
+      }, 50);
+    }
+
+    // --- Card tilt on hover ---
+    document.querySelectorAll('.card, .skill-block').forEach(el => {
+      el.addEventListener('pointermove', e => {
+        const r = el.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        el.style.setProperty('--rx', (-y * 8).toFixed(2) + 'deg');
+        el.style.setProperty('--ry', (x * 10).toFixed(2) + 'deg');
+        el.style.setProperty('--gx', ((x + 0.5) * 100).toFixed(2) + '%');
+        el.style.setProperty('--gy', ((y + 0.5) * 100).toFixed(2) + '%');
+      });
+      el.addEventListener('pointerleave', () => {
+        el.style.setProperty('--rx', '0deg');
+        el.style.setProperty('--ry', '0deg');
+      });
+    });
   </script>
 </body>
 </html>
